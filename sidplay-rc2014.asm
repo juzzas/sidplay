@@ -18,6 +18,8 @@
 ;
 ; RSID files and sound samples are not supported.
 
+PUBLIC _main
+
 defc base          =  0xd000           ; Player based at 53248
 
 defc buffer_blocks =  25              ; number of frames to pre-buffer
@@ -62,9 +64,9 @@ defc c64_cia_timer =  0xdc04           ; C64 CIA#1 timer
 defc c64_sid_base  =  0xd400           ; C64 SID chip
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SECTION code_user
 
-               org  base
-
+_main:
                jr   start
 
 song:          defb 0               ; 0=default song from SID header
