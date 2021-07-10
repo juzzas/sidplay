@@ -63,6 +63,8 @@ defc c64_irq_cont  =  0xea31           ; C64 ROM IRQ chaining
 defc c64_cia_timer =  0xdc04           ; C64 CIA#1 timer
 defc c64_sid_base  =  0xd400           ; C64 SID chip
 
+defc sidfile_start =  0xa000          ; where to expect the SID file to be, in memory
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SECTION code_user
 
@@ -75,13 +77,13 @@ pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 
 start:         di
 
-               ld   (old_stack+1),sp
-               ld   sp,new_stack
+;               ld   (old_stack+1),sp
+;               ld   sp,new_stack
 
-               ld   a,low_page+rom0_off
-               out  (lmpr),a        ; page in tune
+;               ld   a,low_page+rom0_off
+;               out  (lmpr),a        ; page in tune
 
-               ld   hl,0            ; SID file header
+               ld   hl,sidfile_start ; SID file header
                ld   a,(hl)
                cp   'R'             ; RSID signature?
                ld   c,ret_rsid
@@ -100,18 +102,18 @@ old_file:      ex   af,af'          ; save Z flag for new file
                ld   c,ret_badfile
                jp   nz,exit_player
 
-               ld   a,high_page+rom0_off
-               out  (lmpr),a
+;               ld   a,high_page+rom0_off
+;               out  (lmpr),a
 
-               ld   hl,0xd000
-               ld   de,0xd000-0x8000
-               ld   bc,0x1000
-               ldir                 ; copy player
+;               ld   hl,0xd000
+;               ld   de,0xd000-0x8000
+;               ld   bc,0x1000
+;               ldir                 ; copy player
 
-               ld   a,low_page+rom0_off
-               out  (lmpr),a        ; page tune back in
-               ld   a,high_page
-               out  (hmpr),a        ; activate player copy
+;               ld   a,low_page+rom0_off
+;               out  (lmpr),a        ; page tune back in
+;               ld   a,high_page
+;               out  (hmpr),a        ; activate player copy
 
                ld   h,(ix+10)       ; init address
                ld   l,(ix+11)
@@ -135,26 +137,26 @@ old_file:      ex   af,af'          ; save Z flag for new file
 got_load:
 
                ex   af,af'
-               jr   nz,no_reloc
+ ;              jr   nz,no_reloc
 
 ; At this point we have:  HL=sid_data DE=load_addr
 
-               ld   b,h
-               ld   c,l
-               ld   hl,0xffff
-               and  a
-               sbc  hl,de
-               add  hl,bc
-               ld   de,0xffff
-               ld   bc,0x2000
-               lddr                 ; relocate e000-ffff
-               ld   bc,-0x1000
-               add  hl,bc
-               ex   de,hl
-               add  hl,bc
-               ex   de,hl
-               ld   bc,0xd000
-               lddr                 ; relocate 0000-cfff
+;               ld   b,h
+;               ld   c,l
+;               ld   hl,0xffff
+;               and  a
+;               sbc  hl,de
+;               add  hl,bc
+;               ld   de,0xffff
+;               ld   bc,0x2000
+;               lddr                 ; relocate e000-ffff
+;               ld   bc,-0x1000
+;               add  hl,bc
+;               ex   de,hl
+;               add  hl,bc
+;               ex   de,hl
+;               ld   bc,0xd000
+;               lddr                 ; relocate 0000-cfff
 no_reloc:
                xor  a
                ld   h,zero_page_msb
@@ -197,13 +199,13 @@ got_speed:     ld   a,(hl)
                exx
 exit_player:   ld   b,0
 
-               ld   a,31
-               out  (lmpr),a
-               ld   a,1
-               out  (hmpr),a
-               xor  a
-               out  (border),a
-old_stack:     ld   sp,0
+;               ld   a,31
+;               out  (lmpr),a
+;               ld   a,1
+;               out  (hmpr),a
+;               xor  a
+;               out  (border),a
+;old_stack:     ld   sp,0
                ei
                ret
 
@@ -265,49 +267,49 @@ sleep_loop:    halt                 ; wait for a block to play
 play_loop:     ld   a,(key_mask)    ; keys to ignore
                ld   b,a
 
-               ld   a,0xf7
-               in   a,(status)      ; read extended keys
-               or   b
-               and  %00100000       ; check Esc
-               ld   a,ret_esc
-               ret  z               ; exit if pressed
+;               ld   a,0xf7
+;               in   a,(status)      ; read extended keys
+;               or   b
+;               and  %00100000       ; check Esc
+;               ld   a,ret_esc
+;               ret  z               ; exit if pressed
 
-               ld   a,0x7f           ; bottom row
-               in   a,(keyboard)    ; read keyboard
-               or   b
-               rra                  ; check Space
-               ld   a,ret_space
-               ret  nc              ; exit if space pressed
+;               ld   a,0x7f           ; bottom row
+;               in   a,(keyboard)    ; read keyboard
+;               or   b
+;               rra                  ; check Space
+;               ld   a,ret_space
+;               ret  nc              ; exit if space pressed
 
-               ld   a,0xff           ; cursor keys + cntrl
-               in   a,(keyboard)
-               or   b               ; mask keys to ignore
-               rra                  ; key bit 0 (cntrl)
-               rra                  ; key bit 1 (up)
-               ld   c,a
-               ld   a,ret_up
-               ret  nc              ; return if pressed
-               inc  a
-               rr   c               ; key bit 2 (down)
-               ret  nc              ; return if pressed
-               inc  a
-               rr   c               ; key bit 3 (left)
-               ret  nc              ; return if pressed
-               inc  a
-               rr   c               ; key bit 3 (right)
-               ret  nc              ; return if pressed
+;               ld   a,0xff           ; cursor keys + cntrl
+;               in   a,(keyboard)
+;               or   b               ; mask keys to ignore
+;               rra                  ; key bit 0 (cntrl)
+;               rra                  ; key bit 1 (up)
+;               ld   c,a
+;               ld   a,ret_up
+;               ret  nc              ; return if pressed
+;               inc  a
+;               rr   c               ; key bit 2 (down)
+;               ret  nc              ; return if pressed
+;               inc  a
+;               rr   c               ; key bit 3 (left)
+;               ret  nc              ; return if pressed
+;               inc  a
+;               rr   c               ; key bit 3 (right)
+;               ret  nc              ; return if pressed
 
-               ld   a,0xf7
-               in   a,(keyboard)
-               rra
-               ld   c,a
-               call nc,set_100Hz
-               bit  3,c
-               call z,set_50Hz
-               ld   a,0xef
-               in   a,(keyboard)
-               bit  4,a
-               call z,set_60Hz
+;               ld   a,0xf7
+;               in   a,(keyboard)
+;               rra
+;               ld   c,a
+;               call nc,set_100Hz
+;               bit  3,c
+;               call z,set_50Hz
+;               ld   a,0xef
+;               in   a,(keyboard)
+;               bit  4,a
+;               call z,set_60Hz
 
                ld   hl,(blocks)     ; check buffered blocks
                ld   de,32768/32-1   ; maximum we can buffer
