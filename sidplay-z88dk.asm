@@ -18,7 +18,7 @@
 ;
 ; RSID files and sound samples are not supported.
 
-PUBLIC _main
+PUBLIC _sidplay_init
 
 defc base          =  0xd000           ; Player based at 53248
 
@@ -35,7 +35,6 @@ defc line          =  249             ; Line interrupt (output)
 defc lmpr          =  250             ; Low Memory Page Register
 defc hmpr          =  251             ; High Memory Page Register
 defc midi          =  253             ; MIDI port
-defc border        =  254             ; Bits 5 and 3-0 hold border colour (output)
 defc keyboard      =  254             ; Main keyboard matrix (input)
 defc rom0_off      =  %00100000       ; LMPR bit to disable ROM0
 
@@ -68,21 +67,26 @@ defc sidfile_start =  0xa000          ; where to expect the SID file to be, in m
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 SECTION code_user
 
-_main:
-               jr   start
+_sidplay_init:
+                jp sidplay_init
+
+_sidplay_loop:
+                jp play_loop
+
+_sidplay_playblock:         ; from interrupt
+                jp play_block
+
+SECTION data_user
 
 song:          defb 0               ; 0=default song from SID header
 key_mask:      defb %00000000       ; exit keys to ignore
 pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 
-start:         di
+reorder_256_ws:     defs 257             ; 256 overlapped WORDs
 
-;               ld   (old_stack+1),sp
-;               ld   sp,new_stack
+SECTION code_user
 
-;               ld   a,low_page+rom0_off
-;               out  (lmpr),a        ; page in tune
-
+sidplay_init:
                ld   hl,sidfile_start ; SID file header
                ld   a,(hl)
                cp   'R'             ; RSID signature?
@@ -101,19 +105,6 @@ old_file:      ex   af,af'          ; save Z flag for new file
                cp   'P'
                ld   c,ret_badfile
                jp   nz,exit_player
-
-;               ld   a,high_page+rom0_off
-;               out  (lmpr),a
-
-;               ld   hl,0xd000
-;               ld   de,0xd000-0x8000
-;               ld   bc,0x1000
-;               ldir                 ; copy player
-
-;               ld   a,low_page+rom0_off
-;               out  (lmpr),a        ; page tune back in
-;               ld   a,high_page
-;               out  (hmpr),a        ; activate player copy
 
                ld   h,(ix+10)       ; init address
                ld   l,(ix+11)
@@ -137,26 +128,8 @@ old_file:      ex   af,af'          ; save Z flag for new file
 got_load:
 
                ex   af,af'
- ;              jr   nz,no_reloc
-
 ; At this point we have:  HL=sid_data DE=load_addr
 
-;               ld   b,h
-;               ld   c,l
-;               ld   hl,0xffff
-;               and  a
-;               sbc  hl,de
-;               add  hl,bc
-;               ld   de,0xffff
-;               ld   bc,0x2000
-;               lddr                 ; relocate e000-ffff
-;               ld   bc,-0x1000
-;               add  hl,bc
-;               ex   de,hl
-;               add  hl,bc
-;               ex   de,hl
-;               ld   bc,0xd000
-;               lddr                 ; relocate 0000-cfff
 no_reloc:
                xor  a
                ld   h,zero_page_msb
@@ -192,21 +165,11 @@ got_speed:     ld   a,(hl)
                ld   c,a
                exx
 
-               di
-               im   1
                call sid_reset
 
                exx
-exit_player:   ld   b,0
 
-;               ld   a,31
-;               out  (lmpr),a
-;               ld   a,1
-;               out  (hmpr),a
-;               xor  a
-;               out  (border),a
-;old_stack:     ld   sp,0
-               ei
+exit_player:   ld   b,0
                ret
 
 sid_header:    defs 22              ; copy of start of SID header
@@ -260,62 +223,17 @@ buffer_loop:   ld   hl,(blocks)     ; current block count
                jr   buffer_loop     ; loop buffering more
 
 buffer_done:   call set_speed       ; set player speed
-               call enable_player   ; enable interrupt-driven player
+               ;call enable_player   ; enable interrupt-driven player
+               ret
 
-sleep_loop:    halt                 ; wait for a block to play
 
-play_loop:     ld   a,(key_mask)    ; keys to ignore
-               ld   b,a
-
-;               ld   a,0xf7
-;               in   a,(status)      ; read extended keys
-;               or   b
-;               and  %00100000       ; check Esc
-;               ld   a,ret_esc
-;               ret  z               ; exit if pressed
-
-;               ld   a,0x7f           ; bottom row
-;               in   a,(keyboard)    ; read keyboard
-;               or   b
-;               rra                  ; check Space
-;               ld   a,ret_space
-;               ret  nc              ; exit if space pressed
-
-;               ld   a,0xff           ; cursor keys + cntrl
-;               in   a,(keyboard)
-;               or   b               ; mask keys to ignore
-;               rra                  ; key bit 0 (cntrl)
-;               rra                  ; key bit 1 (up)
-;               ld   c,a
-;               ld   a,ret_up
-;               ret  nc              ; return if pressed
-;               inc  a
-;               rr   c               ; key bit 2 (down)
-;               ret  nc              ; return if pressed
-;               inc  a
-;               rr   c               ; key bit 3 (left)
-;               ret  nc              ; return if pressed
-;               inc  a
-;               rr   c               ; key bit 3 (right)
-;               ret  nc              ; return if pressed
-
-;               ld   a,0xf7
-;               in   a,(keyboard)
-;               rra
-;               ld   c,a
-;               call nc,set_100Hz
-;               bit  3,c
-;               call z,set_50Hz
-;               ld   a,0xef
-;               in   a,(keyboard)
-;               bit  4,a
-;               call z,set_60Hz
-
+play_loop:
                ld   hl,(blocks)     ; check buffered blocks
                ld   de,32768/32-1   ; maximum we can buffer
                and  a
                sbc  hl,de
-               jr   nc,sleep_loop   ; jump back to wait if full
+               ;jr   nc,sleep_loop   ; jump back to wait if full  -- TODO: return?
+               ret nc
 
                xor  a
                ld   hl,(play_addr)
@@ -382,64 +300,6 @@ sid_write:     ld   a,(hl)
 gap1:          equ  0xd200-$         ; error if previous code is
                defs gap1            ; too big for available gap!
 
-im2_table:     defs 257             ; 256 overlapped WORDs
-
-im2_handler:   push af
-               in   a,(status)      ; read status to check interrupts
-               rra
-               jr   nc,line_int
-               bit  3,a
-               jr   z,midi_int
-               bit  2,a
-               jr   nz,int_exit
-
-frame_int:     ld   a,(line_num)
-               and  a               ; zero?
-               jr   z,int_hit       ; frame int only for 50Hz
-               cp   step5_60Hz      ; 2nd step in border for 60Hz
-               jr   z,midi_start
-line_start:    cp   0               ; (self-modified value)
-               jr   z,line_set
-line_end:      cp   0               ; (self-modified value)
-               jr   nz,int_exit     ; skip frame interrupt
-               ld   a,(line_start+1); first step
-               jr   line_set        ; loop interrupt sequence
-
-line_int:      ld   a,(line_num)
-line_step1:    sub  0               ; (self-modified value)
-line_set:      out  (line),a
-               ld   (line_num),a
-
-int_hit:       in   a,(lmpr)
-               push af
-               ld   a,buffer_page+rom0_off
-               out  (lmpr),a
-               push bc
-               push de
-               push hl
-               call play_block
-               pop  hl
-               pop  de
-               pop  bc
-               pop  af
-               out  (lmpr),a
-int_exit:      pop  af
-               ei
-               reti
-
-midi_start:
-line_step2:    sub  0               ; adjust line for next step
-               ld   (line_num),a
-               ld   a,10
-               jr   midi_next       ; assumes NZ from sub above
-midi_int:      ld   a,0
-               dec  a
-midi_next:     ld   (midi_int+1),a
-               jr   z,int_hit
-               out  (midi),a
-               jr   int_exit
-
-line_num:      defb 0
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2360,8 +2220,6 @@ play_block:    ld   hl,(blocks)
                ld   de,buffer_low
                sbc  hl,de
                jr   nc,buffer_ok    ; jump if we're not low
-               ld   a,128           ; screen off for speed boost
-               out  (border),a
 
 buffer_ok:     ld   a,buffer_page+rom0_off
                out  (lmpr),a
@@ -2386,30 +2244,16 @@ buffer_ok:     ld   a,buffer_page+rom0_off
                out  (border),a
                ret
 
-enable_player: ld   hl,im2_table
-               ld   c,im2_vector/256
-im2_lp:        ld   (hl),c
-               inc  l
-               jr   nz,im2_lp       ; loop for first 256 entries
-               ld   a,h
-               inc  h
-               ld   (hl),c          ; 257th entry
-               ld   i,a
-               im   2               ; set interrupt mode 2
-               ei                   ; enable player
-               ret
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 gap5:          equ  0xdddd-$         ; error if previous code is
                defs gap5            ; too big for available gap!
 
-im2_vector:    jp   im2_handler     ; interrupt mode 2 handler
 
 ; Reordering the decode table to group low and high bytes avoids
 ; 16-bit arithmetic for the decode stage, saving 12T
 
-reorder_256:   equ  im2_table       ; use IM2 table as working space
+reorder_256:   equ  reorder_256_ws
 
 reorder_decode:ld   hl,decode_table
                ld   d,h

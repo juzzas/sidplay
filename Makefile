@@ -17,8 +17,8 @@ endif
 net: $(NAME).dsk
 	samdisk $(NAME).dsk sam:
 
-rc2014: $(NAME)-rc2014.asm $(DEPS)
-	zcc +rc2014 -subtype=basic -SO3 --max-allocs-per-node=200000 $(NAME)-rc2014.asm -o $(NAME)-rc2014 -create-app
+rc2014: sidplay-rc2014.c sidplay-z88dk.asm $(DEPS)
+	zcc +rc2014 -subtype=basic -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-z88dk.asm -o sidplay-rc2014 -create-app
 
 clean:
 	rm -f $(NAME).dsk $(NAME).map $(NAME)-rc2014*.bin $(NAME)-rc2014*.ihx
