@@ -20,5 +20,9 @@ net: $(NAME).dsk
 rc2014: sidplay-rc2014.c sidplay-z88dk.asm $(DEPS)
 	zcc +rc2014 -subtype=basic -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-z88dk.asm -o sidplay-rc2014 -create-app
 
+rc2014_concept: sidplay-concept.asm $(DEPS)
+#	z88dk-z80asm -v -b -m sidplay-concept.asm
+	zcc +embedded -v -m --list -subtype=none --no-crt sidplay-concept-map.asm sidplay-concept.asm -o rc2014-concept -create-app  -Cz"+glue --ihex --clean --pad"
+
 clean:
-	rm -f $(NAME).dsk $(NAME).map $(NAME)-rc2014*.bin $(NAME)-rc2014*.ihx
+	rm -f *.dsk *.map *.bin *.ihx *.lis
