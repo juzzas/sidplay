@@ -2158,8 +2158,7 @@ im2_lp:        ld   (hl),c
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-defc gap5 =  0xdddd-$         ; error if previous code is
-               defs gap5            ; too big for available gap!
+SECTION VECTOR
 
 im2_vector:    jp   im2_handler     ; interrupt mode 2 handler
 
