@@ -21,7 +21,7 @@ defc base          =  0xd000           ; Player based at 53248
 
 defc buffer_blocks =  25              ; number of frames to pre-buffer
 
-defc rc2014_sid_port   =  0xcf             ; base port for SID interface
+defc rc2014_sid_port   =  0x54             ; base port for SID interface
 
 defc zero_page_msb =  0xe0             ; 6502 zero page base MSB
 defc stack_msb     =  0xe1             ; 6502 stack base MSB
@@ -1951,16 +1951,53 @@ SECTION C64_CIA1
 
 ; SID interface functions
 
+sid_clear:      ld c, rc2014_sid_port
+                ld b, 0x98
+                xor a
+                out (c), a
+                nop
+                nop
+                nop
+                res 7,b
+                out (c), a
+                nop
+                nop
+                nop
+                set 7,b
+                out (c), a
+                ret
+
+; entry:
+;        A = SID register (0x00 - 0x18)
+;        D = DATA BYTE
+;        E = interrup controller mode
+;            (0x00 = off, 0x20 = 50Hz, 0x40 = 60Hz, 0x60 - 100Hx)
+
+sid_io:         ld c, rc2014_sid_port
+                or e
+                ld b,a
+                out (c), d
+                nop
+                nop
+                nop
+                set 7,b
+                out (c), d
+                ret
+
+
 sid_reset:     ld   hl,last_regs
                ld   bc,rc2014_sid_port
                ld   d,b            ; write 0 to all registers
                ld   a,25           ; 25 registers to write
-reset_loop:    out  (c),d          ; write to register
-               ld   (hl),d         ; remember new value
+reset_loop:
+               ld e, 0x00          ; interrupts off
+               push bc
+               push af
+               call sid_io
+               pop af
+               pop bc
+
                inc  hl
-               set  7,b
-               out  (c),d          ; effectively strobe write
-               res  7,b
                inc  b
                cp   b
                jr   nz,reset_loop  ; loop until all reset
@@ -1972,7 +2009,6 @@ reset_loop:    out  (c),d          ; write to register
                ret
 
 sid_update:    ex   de,hl          ; switch new values to DE
-               ld   c,rc2014_sid_port  ; SID interface base port
 
                ld   hl,25          ; control 1 changes offset
                add  hl,de
@@ -1984,10 +2020,15 @@ sid_update:    ex   de,hl          ; switch new values to DE
                ld   b,l            ; SID register 4
                add  hl,de
                xor  (hl)           ; toggle changed bits
-               out  (c),a          ; write intermediate value
+
                ld   (last_regs+0x04),a ; update last reg value
-               set  7,b
-               out  (c),a          ; strobe
+
+               push de
+               ld d, a
+               ld e, 0x20
+               ld a, b
+               call sid_io
+               pop de
 
 control2:      ld   hl,26          ; control 2 changes offset
                add  hl,de
@@ -1999,10 +2040,14 @@ control2:      ld   hl,26          ; control 2 changes offset
                ld   b,l            ; SID register 11
                add  hl,de
                xor  (hl)
-               out  (c),a
                ld   (last_regs+0x0b),a
-               set  7,b
-               out  (c),a
+
+               push de
+               ld d, a
+               ld e, 0x20
+               ld a, b
+               call sid_io
+               pop de
 
 control3:      ld   hl,27          ; control 3 changes offset
                add  hl,de
@@ -2014,21 +2059,30 @@ control3:      ld   hl,27          ; control 3 changes offset
                ld   b,l            ;  SID register 18
                add  hl,de
                xor  (hl)
-               out  (c),a
                ld   (last_regs+0x12),a
-               set  7,b
-               out  (c),a
+
+               push de
+               ld d, a
+               ld e, 0x20
+               ld a, b
+               call sid_io
+               pop de
 
 control_done:  ld   hl,last_regs   ; previous register values
                ld   b,0            ; start with register 0
 out_loop:      ld   a,(de)         ; new register value
                cp   (hl)           ; compare with previous value
                jr   z,sid_skip     ; skip if no change
-               out  (c),a          ; write value
-               ld   (hl),a         ; store new value
-               set  7,b
-               out  (c),a          ; effectively strobe write
-               res  7,b
+
+               push bc
+               push de
+               ld d, a
+               ld e, 0x20
+               ld a, b
+               call sid_io
+               pop de
+               pop bc
+
 sid_skip:      inc  hl
                inc  de
                inc  b              ; next register
