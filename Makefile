@@ -17,12 +17,12 @@ endif
 net: $(NAME).dsk
 	samdisk $(NAME).dsk sam:
 
-rc2014: sidplay-rc2014.c sidplay-z88dk.asm $(DEPS)
-	zcc +rc2014 -subtype=basic -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-z88dk.asm -o sidplay-rc2014 -create-app
+sidplayer-driver.bin: sidplay-driver.asm $(DEPS)
+	zcc +embedded -v -m --list -subtype=none --no-crt sidplay-driver-map.asm sidplay-driver.asm -o sidplayer-driver -create-app  -Cz"+glue --clean --pad"
 
-rc2014_concept: sidplay-concept.asm $(DEPS)
-#	z88dk-z80asm -v -b -m sidplay-concept.asm
-	zcc +embedded -v -m --list -subtype=none --no-crt sidplay-concept-map.asm sidplay-concept.asm -o rc2014-concept -create-app  -Cz"+glue --ihex --clean --pad"
+rc2014: sidplayer-driver.bin sidplay-rc2014.c sidplay-z88dk.asm $(DEPS)
+	zcc +rc2014 -subtype=basic -v -m --list -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-rc2014.asm -o sidplay-rc2014 -create-app
+	#zcc +test -v -m --list -SO2 sidplay-rc2014.c sidplay-rc2014.asm -o sidplay-rc2014 -create-app
 
 clean:
 	rm -f *.dsk *.map *.bin *.ihx *.lis
