@@ -29,7 +29,11 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <z80.h>
+
+#include "sidplay-rc2014.h"
 
 extern void sidplay_copy_driver();
 extern void sidplay_copy_sidfile();
@@ -37,12 +41,78 @@ extern void sidplay_init();
 extern void sidplay_record_block();
 extern void sidplay_play_block();
 
+static struct SidFileInfo *S_sidfile;
+static char S_name[33];
+static char S_author[33];
+static char S_released[33];
+
+uint16_t swap16(uint16_t val)
+{
+    uint16_t tmp;
+
+    tmp = (val & 0x00ff) << 8;
+    tmp |= (val & 0xff00) >> 8;
+
+    return tmp;
+}
+
+void copy_sid_string(char *dest, char *source)
+{
+    memcpy(dest, source, 32);
+    dest[32] = 0;
+}
+
+
 int main(int argc, char **argv)
 {
+    uint8_t *sid_raw;
+    uint16_t version;
+    uint16_t data_offset;
+    uint16_t load_addr;
     int i;
 
     sidplay_copy_driver();
-    sidplay_copy_sidfile();
+    //sidplay_copy_sidfile();
+
+    S_sidfile = (struct SidFileInfo *)sid_file_base;
+
+    sid_raw = (uint8_t *)S_sidfile;
+    version = swap16(S_sidfile->version);
+    data_offset = swap16(S_sidfile->data_offset);
+    load_addr = swap16(S_sidfile->load_address);
+
+    printf("sid file base = 0x%x\n", sid_file_base);
+    printf("sid file base = 0x%p\n", S_sidfile);
+    printf("version = 0x%x\n", version);
+    printf("data = 0x%04x\n", data_offset);
+    printf("load address = 0x%x\n", load_addr);
+
+    if (S_sidfile->load_address == 0)
+    {
+        load_addr = z80_wpeek(&sid_raw[data_offset]);
+        data_offset += 2;
+
+        printf("real load address = 0x%x\n", load_addr);
+        printf("real data offset = 0x%x\n", data_offset);
+    }
+    printf("init address = 0x%04x\n", swap16(S_sidfile->init_address));
+    printf("play address = 0x%04x\n", swap16(S_sidfile->play_address));
+
+    copy_sid_string(S_name, S_sidfile->name);
+    copy_sid_string(S_author, S_sidfile->author);
+    copy_sid_string(S_released, S_sidfile->released);
+
+    printf("Name: %s\n", S_name);
+    printf("Author: %s\n", S_author);
+    printf("Released: %s\n", S_released);
+
+
+    /*
+     * currently, just blat the whole lot to to load_address - offset
+     * in future, well pass two pointers to the driver sid_header and sid data
+     */
+    memcpy ((void *)(load_addr - data_offset), sid_raw, sid_file_end - sid_file_base);
+
 
     sidplay_init();
 

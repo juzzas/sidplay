@@ -22,7 +22,9 @@ sidplayer-driver.bin: sidplay-driver.asm $(DEPS)
 
 rc2014: sidplayer-driver.bin sidplay-rc2014.c sidplay-z88dk.asm $(DEPS)
 	zcc +rc2014 -subtype=basic -v -m --list -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-rc2014.asm -o sidplay-rc2014 -create-app
-	#zcc +test -v -m --list -SO2 sidplay-rc2014.c sidplay-rc2014.asm -o sidplay-rc2014 -create-app
+
+test: sidplayer-driver.bin sidplay-rc2014.c sidplay-z88dk.asm $(DEPS)
+	zcc +test -v -m --list -SO2 sidplay-rc2014.c sidplay-rc2014.asm -o sidplay-rc2014 -create-app
 
 clean:
 	rm -f *.dsk *.map *.bin *.ihx *.lis

@@ -9,6 +9,9 @@ PUBLIC _sidplay_copy_sidfile
 PUBLIC _sidplay_init
 PUBLIC _sidplay_record_block
 PUBLIC _sidplay_play_block
+PUBLIC _sid_file_base
+PUBLIC _sid_file_end
+
 
 SECTION code_user
 
@@ -90,4 +93,7 @@ sid_file_base:
                binary "Thing_On_A_Spring.sid"
 defc sid_file_end = $
 
-
+_sid_file_base:
+                defw sid_file_base
+_sid_file_end:
+                defw sid_file_end
