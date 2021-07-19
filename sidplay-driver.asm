@@ -103,8 +103,8 @@ use_default:   ld   a,c
 got_song:      ld   (play_song),a   ; save song to play
 
 
-               call play_tune
                call sid_reset
+               call play_tune
 
                ret
 
@@ -128,7 +128,6 @@ play_tune:     ld   hl,0
                and  a
                ret  nz              ; return any error
 
-               call sid_reset       ; reset the SID
                call record_block    ; record initial SID state
 
                ld   hl,(play_addr)  ; tune player poll address
