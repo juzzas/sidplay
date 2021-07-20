@@ -33,6 +33,7 @@
 #include <string.h>
 #include <z80.h>
 
+#include "bubtb.h"
 #include "sidplay-rc2014.h"
 
 extern void sidplay_copy_driver();
@@ -45,6 +46,8 @@ static struct SidFileInfo *S_sidfile;
 static char S_name[33];
 static char S_author[33];
 static char S_released[33];
+
+static char S_bubble_buffer[8 + 1] = "  cute  ";
 
 uint16_t swap16(uint16_t val)
 {
@@ -73,6 +76,9 @@ int main(int argc, char **argv)
 
     sidplay_copy_driver();
     //sidplay_copy_sidfile();
+
+    clear_buffer();
+    flush_display_buffer();
 
     S_sidfile = (struct SidFileInfo *)sid_file_base;
 
@@ -106,6 +112,9 @@ int main(int argc, char **argv)
     printf("Author: %s\n", S_author);
     printf("Released: %s\n", S_released);
 
+    for (i = 0; i < 8; i++)
+        put_char_at_index(S_bubble_buffer[i], i);
+
 
     /*
      * currently, just blat the whole lot to to load_address - offset
@@ -117,12 +126,12 @@ int main(int argc, char **argv)
     sidplay_init();
 
     while (1) {
-        z80_delay_ms(20);  // 50Hz
         sidplay_play_block();
-
-        for (i = 0; i < 8; i++) {
+        flush_display_buffer();
+        //for (i = 0; i < 4; i++) {
             sidplay_record_block();
-        }
+        //}
+        z80_delay_ms(10);  // very approximate 50Hz
     }
 
     return 0;
