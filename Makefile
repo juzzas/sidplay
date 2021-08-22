@@ -20,11 +20,11 @@ net: $(NAME).dsk
 sidplayer-driver.bin: sidplay-driver.asm $(DEPS)
 	zcc +embedded -v -m --list -subtype=none --no-crt sidplay-driver-map.asm sidplay-driver.asm -o sidplayer-driver -create-app  -Cz"+glue --clean --pad"
 
-rc2014: sidplayer-driver.bin sidplay-rc2014.c sidplay-z88dk.asm bubtb.asm $(DEPS)
-	zcc +rc2014 -subtype=hbios -v -m --list -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-rc2014.asm bubtb.asm -o sidplay-rc2014 -create-app
+rc2014: sidplayer-driver.bin sidplay-rc2014.c bubtb.asm $(DEPS)
+	zcc +cpm -compiler=sdcc -v -m --list -SO2  --max-allocs-per-node100000 sidplay-rc2014.c sidplay-rc2014.asm bubtb.asm -o sidplay-rc2014 -create-app
 
-test: sidplayer-driver.bin sidplay-rc2014.c sidplay-z88dk.asm $(DEPS)
-	zcc +test -v -m --list -SO2 sidplay-rc2014.c sidplay-rc2014.asm -o sidplay-rc2014 -create-app
+rc2014-hbios: sidplayer-driver.bin sidplay-rc2014.c  bubtb.asm $(DEPS)
+	zcc +rc2014 -subtype=hbios -v -m --list -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-rc2014.asm bubtb.asm -o sidplay-rc2014 -create-app
 
 clean:
 	rm -f *.dsk *.map *.bin *.ihx *.lis

@@ -28,10 +28,11 @@
  *  - move SID data to another address, rather than 0xD400?
  */
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <z80.h>
+#include <unistd.h>
 
 #include "bubtb.h"
 #include "sidplay-rc2014.h"
@@ -48,6 +49,8 @@ static char S_author[33];
 static char S_released[33];
 
 static char S_bubble_buffer[8 + 1] = "  cute  ";
+
+unsigned char S_sidfile_header[128];
 
 uint16_t swap16(uint16_t val)
 {
@@ -73,14 +76,22 @@ int main(int argc, char **argv)
     uint16_t data_offset;
     uint16_t load_addr;
     int i;
+    FILE *fd;
 
-    sidplay_copy_driver();
-    //sidplay_copy_sidfile();
+//    sidplay_copy_driver();
 
     clear_buffer();
     flush_display_buffer();
 
-    S_sidfile = (struct SidFileInfo *)sid_file_base;
+    fd = fopen("AIRWOLF.SID","rb");
+    if (!fd) {
+        printf("Can't open SID file\n");
+        exit(1);
+    }
+
+    fread(S_sidfile_header, sizeof(S_sidfile_header), 1, fd);
+
+    S_sidfile = (struct SidFileInfo *)S_sidfile_header;
 
     sid_raw = (uint8_t *)S_sidfile;
     version = swap16(S_sidfile->version);
@@ -95,7 +106,7 @@ int main(int argc, char **argv)
 
     if (S_sidfile->load_address == 0)
     {
-        load_addr = z80_wpeek(&sid_raw[data_offset]);
+        load_addr = wpeek(&sid_raw[data_offset]);
         data_offset += 2;
 
         printf("real load address = 0x%x\n", load_addr);
@@ -116,6 +127,8 @@ int main(int argc, char **argv)
         put_char_at_index(S_bubble_buffer[i], i);
 
 
+    exit(0);
+#if 0
     /*
      * currently, just blat the whole lot to to load_address - offset
      * in future, well pass two pointers to the driver sid_header and sid data
@@ -133,6 +146,7 @@ int main(int argc, char **argv)
         //}
         z80_delay_ms(10);  // very approximate 50Hz
     }
+#endif
 
     return 0;
 }
