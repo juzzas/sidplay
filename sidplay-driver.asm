@@ -50,7 +50,7 @@ defc c64_sid_base  =  0xd400           ; C64 SID chip
 
 defc z80_ret_op    =  0xc9             ; RET opcode
 
-defc sid_file_base = 0xc000 - 126
+defc sid_file_base_default = 0xa000
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -68,19 +68,81 @@ hook_driver_play_block:
                jp   play_block
 
 
+sid_file_base: defw sid_file_base_default
 song:          defb 0               ; 0=default song from SID header
 key_mask:      defb %00000000       ; exit keys to ignore
 pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 
+start:         di
+
+               ld   (old_stack+1),sp
+               ld   sp,new_stack
+
 init:
-               ld   a,(sid_file_base+11)       ; init address (big-endian)
-               ld   (init_addr+0),a
-               ld   a,(sid_file_base+10)
-               ld   (init_addr+1),a
-               ld   a,(sid_file_base+13)       ; play address (big-endian)
-               ld   (play_addr+0),a
-               ld   a,(sid_file_base+12)
-               ld   (play_addr+1),a
+                ld hl,(sid_file_base)
+
+               ld   hl,0            ; SID file header
+               ld   a,(hl)
+               cp   'R'             ; RSID signature?
+               ld   c,ret_rsid
+               jp   z,exit_player
+               cp   'P'             ; new PSID signature?
+               jr   nz,old_file
+
+               ld   de,sid_header
+               ld   bc,22
+               ldir                 ; copy header to master copy
+old_file:      ex   af,af'          ; save Z flag for new file
+
+               ld   ix,sid_header
+               ld   a,(ix)
+               cp   'P'
+               ld   c,ret_badfile
+               jp   nz,exit_player
+
+               ld   h,(ix+10)       ; init address
+               ld   l,(ix+11)
+               ld   (init_addr),hl
+               ld   h,(ix+12)       ; play address
+               ld   l,(ix+13)
+               ld   (play_addr),hl
+
+               ld   h,(ix+6)        ; data offset (big-endian)
+               ld   l,(ix+7)
+               ld   d,(ix+8)        ; load address (or zero)
+               ld   e,(ix+9)
+
+               ld   a,d
+               or   e
+               jr   nz,got_load     ; jump if address valid
+               ld   e,(hl)          ; take address from start of data
+               inc  l               ; (already little endian)
+               ld   d,(hl)
+               inc  l
+got_load:
+
+               ex   af,af'
+               jr   nz,no_reloc
+
+; At this point we have:  HL=sid_data DE=load_addr
+
+               ld   b,h
+               ld   c,l
+               ld   hl,0xffff
+               and  a
+               sbc  hl,de
+               add  hl,bc
+               ld   de,0xffff
+               ld   bc,0x2000
+               lddr                 ; relocate e000-ffff
+               ld   bc,-0x1000
+               add  hl,bc
+               ex   de,hl
+               add  hl,bc
+               ex   de,hl
+               ld   bc,0xd000
+               lddr                 ; relocate 0000-cfff
+no_reloc:
 
                xor  a
                ld   h,zero_page_msb
@@ -89,10 +151,8 @@ clear_zp:      ld   (hl),a
                inc  l
                jr   nz,clear_zp
 
-               ld   a,(sid_file_base+15)       ; songs available
-               ld   b,a
-               ld   a,(sid_file_base+17)       ; default start song
-               ld   c,a
+               ld   b,(ix+15)       ; songs available
+               ld   c,(ix+17)       ; default start song
                ld   a,(song)        ; user requested song
                and  a               ; zero?
                jr   z,use_default   ; use default if so
@@ -102,11 +162,31 @@ clear_zp:      ld   (hl),a
 use_default:   ld   a,c
 got_song:      ld   (play_song),a   ; save song to play
 
+               ld   hl,sid_header+21  ; end of speed bit array
+speed_lp:      ld   c,1             ; start with bit 0
+speed_lp2:     dec  a
+               jr   z,got_speed
+               rl   c               ; shift up bit to check
+               jr   nc,speed_lp2
+               dec  hl
+               jr   speed_lp
+got_speed:     ld   a,(hl)
+               and  c
+               ld   (ntsc_tune),a
 
                call sid_reset
                call play_tune
 
                ret
+
+
+
+exit_player:   ld b,0
+old_stack:     ld   sp,0
+               ei
+               ret
+
+sid_header:    defs 22              ; copy of start of SID header
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -154,25 +234,16 @@ buffer_loop:   ld   hl,(blocks)     ; current block count
                jr   buffer_loop     ; loop buffering more
 
 buffer_done:   call check_speed     ; check for compatible playback speed
+               call enable_player   ; enable interrupt-driven player
 
-;sleep_loop:    halt                 ; wait for a block to play
+sleep_loop:    halt                 ; wait for a block to play
 
-play_loop:     ;ld   a,(key_mask)    ; keys to ignore
-               ;ld   b,a
-
-               ;ld   a,0x7f           ; bottom row
-               ;in   a,(keyboard)    ; read keyboard
-               ;or   b
-               ;rra                  ; check Space
-               ;ld   a,ret_space
-               ;ret  nc              ; exit if space pressed
-
+play_loop:
                ld   hl,(blocks)     ; check buffered blocks
                ld   de,4096/32-1    ; maximum we can buffer
                and  a
                sbc  hl,de
-               ret  nc
-               ;jr   nc,sleep_loop   ; jump back to wait if full
+               jr   nc,sleep_loop   ; jump back to wait if full
 
                xor  a
                ld   hl,(play_addr)
@@ -181,8 +252,7 @@ play_loop:     ;ld   a,(key_mask)    ; keys to ignore
                ret  nz              ; return if so
 
                call record_block    ; record the new SID state
-               ;jp   play_loop       ; generate more data
-               ret
+               jp   play_loop       ; generate more data
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2123,6 +2193,7 @@ tail:          defw 0               ; tail for playing data
 init_addr:     defw 0
 play_addr:     defw 0
 play_song:     defb 0
+ntsc_tune:     defb 0               ; non-zero for 60Hz tunes
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2157,13 +2228,13 @@ record_block:  ld   de,(head)
                ld   bc,25
                ldir
 
-               ;ld   a,i             ; preserve iff1 to restore below
-               ;di                   ; critical section for int handler
+               ld   a,i             ; preserve iff1 to restore below
+               di                   ; critical section for int handler
                ld   hl,(blocks)
                inc  hl
                ld   (blocks),hl
-               ;ret  po
-               ;ei
+               ret  po
+               ei
                ret
 
 play_block:    ld   hl,(blocks)
@@ -2180,18 +2251,19 @@ play_block:    ld   hl,(blocks)
                dec  hl              ; consumed 1 block
                ld   (blocks),hl
 
-;               ld   a,0xfe
- ;              in   a,(keyboard)
-  ;             rra
-   ;            ret  c               ; return if Shift not pressed
+               ret
 
-;               add  hl,hl           ; <=32K buffer
-;               add  hl,hl           ; <=16K buffer
-;               add  hl,hl           ; <=8K buffer
-;               ld   a,0x3f
-;               sub  h
-;               and  %00000111
-;               out  (border),a
+enable_player: ld   hl,im2_table
+               ld   c,im2_vector/256
+im2_lp:        ld   (hl),c
+               inc  l
+               jr   nz,im2_lp       ; loop for first 256 entries
+               ld   a,h
+               inc  h
+               ld   (hl),c          ; 257th entry
+               ld   i,a
+               im   2               ; set interrupt mode 2
+               ei                   ; enable player
                ret
 
 

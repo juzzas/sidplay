@@ -77,6 +77,7 @@ int main(int argc, char **argv)
     uint16_t load_addr;
     int i;
     FILE *fd;
+    int rc;
 
 //    sidplay_copy_driver();
 
@@ -126,7 +127,23 @@ int main(int argc, char **argv)
     for (i = 0; i < 8; i++)
         put_char_at_index(S_bubble_buffer[i], i);
 
+    rc = fseek(fd, 0, SEEK_SET);
+    if (rc != 0)
+    {
+        printf("Unable to seek to start of file");
+        exit(1);
+    }
 
+    fseek(fd, 0, SEEK_END);
+    long fsize = ftell(fd);
+    printf("Length of file: 0x%lx\n", fsize);
+    fseek(fd, 0, SEEK_SET);  /* same as rewind(f); */
+
+    rc = fread((void *)0xa000, 1, fsize, fd);
+    printf("file read rc: %d\n", rc);
+    fclose(fd);
+
+    sidplay_init();
     exit(0);
 #if 0
     /*
