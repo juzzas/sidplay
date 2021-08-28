@@ -58,14 +58,11 @@ defc sid_file_base_default = 0xa000
 
 SECTION MAIN
 ; jump table
-hook_driver_init:
-               jp   init
+hook_driver_start:
+               jp   start
 
-hook_driver_record_block:
-               jp   play_loop ;record_block
-
-hook_driver_play_block:
-               jp   play_block
+hook_driver_queue_block:
+               jp   record_block
 
 
 sid_file_base: defw sid_file_base_default
@@ -243,7 +240,8 @@ play_loop:
                ld   de,4096/32-1    ; maximum we can buffer
                and  a
                sbc  hl,de
-               jr   nc,sleep_loop   ; jump back to wait if full
+               ret  nc
+               ;jr   nc,sleep_loop   ; jump back to wait if full
 
                xor  a
                ld   hl,(play_addr)
@@ -252,7 +250,8 @@ play_loop:
                ret  nz              ; return if so
 
                call record_block    ; record the new SID state
-               jp   play_loop       ; generate more data
+               ;jp   play_loop       ; generate more data
+               ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

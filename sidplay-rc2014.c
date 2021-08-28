@@ -39,9 +39,6 @@
 
 extern void sidplay_copy_driver();
 extern void sidplay_copy_sidfile();
-extern void sidplay_init();
-extern void sidplay_record_block();
-extern void sidplay_play_block();
 
 static struct SidFileInfo *S_sidfile;
 static char S_name[33];
@@ -50,7 +47,8 @@ static char S_released[33];
 
 static char S_bubble_buffer[8 + 1] = "  cute  ";
 
-unsigned char S_sidfile_header[128];
+extern const void *sidfile;
+extern const uint16_t sidfile_len;
 
 uint16_t swap16(uint16_t val)
 {
@@ -79,11 +77,12 @@ int main(int argc, char **argv)
     FILE *fd;
     int rc;
 
-//    sidplay_copy_driver();
+    sidplay_copy_driver();
 
     clear_buffer();
     flush_display_buffer();
 
+#if 0
     fd = fopen("AIRWOLF.SID","rb");
     if (!fd) {
         printf("Can't open SID file\n");
@@ -91,7 +90,7 @@ int main(int argc, char **argv)
     }
 
     fread(S_sidfile_header, sizeof(S_sidfile_header), 1, fd);
-
+#endif
     S_sidfile = (struct SidFileInfo *)S_sidfile_header;
 
     sid_raw = (uint8_t *)S_sidfile;
@@ -123,7 +122,7 @@ int main(int argc, char **argv)
     printf("Name: %s\n", S_name);
     printf("Author: %s\n", S_author);
     printf("Released: %s\n", S_released);
-
+#if 0
     for (i = 0; i < 8; i++)
         put_char_at_index(S_bubble_buffer[i], i);
 
@@ -142,8 +141,8 @@ int main(int argc, char **argv)
     rc = fread((void *)0xa000, 1, fsize, fd);
     printf("file read rc: %d\n", rc);
     fclose(fd);
-
-    sidplay_init();
+#endif
+    sidplay_start(sidfile, sidfile_len);
     exit(0);
 #if 0
     /*
