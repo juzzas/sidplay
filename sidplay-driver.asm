@@ -62,10 +62,13 @@ hook_driver_start:
                jp   start
 
 hook_driver_queue_block:
-               jp   record_block
+               jp   play_loop  ;record_block
 
+hook_driver_play_block:
+               jp   play_block
 
 sid_file_base: defw sid_file_base_default
+sid_file_len:  defw 0
 song:          defb 0               ; 0=default song from SID header
 key_mask:      defb %00000000       ; exit keys to ignore
 pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second

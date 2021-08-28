@@ -23,7 +23,7 @@ struct SidFileInfo {
 };
 
 
-extern uint16_t sid_file_base;
-extern uint16_t sid_file_end;
+extern void *sid_file_base;
+extern uint16_t sid_file_length;
 
 #endif //SIDPLAY_RC2014_H

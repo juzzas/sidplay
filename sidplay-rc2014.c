@@ -36,6 +36,7 @@
 
 #include "bubtb.h"
 #include "sidplay-rc2014.h"
+#include "sidplay-z88dk.h"
 
 extern void sidplay_copy_driver();
 extern void sidplay_copy_sidfile();
@@ -46,9 +47,6 @@ static char S_author[33];
 static char S_released[33];
 
 static char S_bubble_buffer[8 + 1] = "  cute  ";
-
-extern const void *sidfile;
-extern const uint16_t sidfile_len;
 
 uint16_t swap16(uint16_t val)
 {
@@ -91,9 +89,9 @@ int main(int argc, char **argv)
 
     fread(S_sidfile_header, sizeof(S_sidfile_header), 1, fd);
 #endif
-    S_sidfile = (struct SidFileInfo *)S_sidfile_header;
+    S_sidfile = (struct SidFileInfo *)sid_file_base;
 
-    sid_raw = (uint8_t *)S_sidfile;
+    sid_raw = (uint8_t *)sid_file_base;
     version = swap16(S_sidfile->version);
     data_offset = swap16(S_sidfile->data_offset);
     load_addr = swap16(S_sidfile->load_address);
@@ -142,28 +140,13 @@ int main(int argc, char **argv)
     printf("file read rc: %d\n", rc);
     fclose(fd);
 #endif
-    sidplay_start(sidfile, sidfile_len);
-    exit(0);
-#if 0
-    /*
-     * currently, just blat the whole lot to to load_address - offset
-     * in future, well pass two pointers to the driver sid_header and sid data
-     */
-    memcpy ((void *)(load_addr - data_offset), sid_raw, sid_file_end - sid_file_base);
 
-
-    sidplay_init();
+    sidplay_start(sid_file_base, sid_file_length);
 
     while (1) {
-        sidplay_play_block();
-        flush_display_buffer();
-        //for (i = 0; i < 4; i++) {
-            sidplay_record_block();
-        //}
-        z80_delay_ms(10);  // very approximate 50Hz
+        sidplay_queue_block();
+        // flush_display_buffer();
     }
-#endif
-
     return 0;
 }
 
