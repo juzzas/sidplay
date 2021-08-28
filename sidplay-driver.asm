@@ -73,15 +73,20 @@ song:          defb 0               ; 0=default song from SID header
 key_mask:      defb %00000000       ; exit keys to ignore
 pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 
+
+;; SIOD DRIVER START
+;; Entry:
+;;     HL = SID file base addres
+;;     DE = SID file length
 start:         di
 
                ld   (old_stack+1),sp
                ld   sp,new_stack
 
 init:
-                ld hl,(sid_file_base)
+               ld (sid_file_base), hl
+               ld (sid_file_len), de
 
-               ld   hl,0            ; SID file header
                ld   a,(hl)
                cp   'R'             ; RSID signature?
                ld   c,ret_rsid
@@ -115,35 +120,24 @@ old_file:      ex   af,af'          ; save Z flag for new file
                ld   a,d
                or   e
                jr   nz,got_load     ; jump if address valid
+               ld   de,(sid_file_base)
+               add  hl, de
                ld   e,(hl)          ; take address from start of data
-               inc  l               ; (already little endian)
+               inc  hl               ; (already little endian)
                ld   d,(hl)
-               inc  l
+               inc  hl
 got_load:
 
                ex   af,af'
                jr   nz,no_reloc
 
 ; At this point we have:  HL=sid_data DE=load_addr
+               ; Note: if load address is above sid_file_base, then we really should use lddr,
+               ; just incase the two memory buffers overlap
+               ld   bc, (sid_file_len)
+               ldir
 
-               ld   b,h
-               ld   c,l
-               ld   hl,0xffff
-               and  a
-               sbc  hl,de
-               add  hl,bc
-               ld   de,0xffff
-               ld   bc,0x2000
-               lddr                 ; relocate e000-ffff
-               ld   bc,-0x1000
-               add  hl,bc
-               ex   de,hl
-               add  hl,bc
-               ex   de,hl
-               ld   bc,0xd000
-               lddr                 ; relocate 0000-cfff
 no_reloc:
-
                xor  a
                ld   h,zero_page_msb
                ld   l,a

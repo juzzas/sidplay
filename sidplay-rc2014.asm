@@ -18,8 +18,8 @@ _sidplay_copy_driver:
 
 _sidplay_start:
                 pop af
-                pop hl
-                pop de
+                pop hl   ;; sid file base
+                pop de   ;; sid file length
                 push af
                 push ix
                 call jt_driver_init
