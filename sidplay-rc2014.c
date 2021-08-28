@@ -75,7 +75,6 @@ int main(int argc, char **argv)
     FILE *fd;
     int rc;
 
-    sidplay_copy_driver();
 
     clear_buffer();
     flush_display_buffer();
@@ -141,6 +140,11 @@ int main(int argc, char **argv)
     fclose(fd);
 #endif
 
+    __asm
+    di
+    __endasm;
+
+    sidplay_copy_driver();
     sidplay_start(sid_file_base, sid_file_length);
 
     while (1) {

@@ -311,7 +311,9 @@ im2_handler:   push af
                push bc
                push de
                push hl
+               push ix
                call play_block
+               pop  ix
                pop  hl
                pop  de
                pop  bc
@@ -2048,6 +2050,7 @@ sid_io:         ld c, rc2014_sid_port
                 ret
 
 
+
 sid_reset:     ld   hl,last_regs
                ld   bc,rc2014_sid_port
                ld   d,b            ; write 0 to all registers
@@ -2088,7 +2091,8 @@ sid_update:    ex   de,hl          ; switch new values to DE
 
                push de
                ld d, a
-               ld e, 0x00
+               ld a, (quazar_int)
+               ld e, a
                ld a, b
                call sid_io
                pop de
@@ -2107,7 +2111,8 @@ control2:      ld   hl,26          ; control 2 changes offset
 
                push de
                ld d, a
-               ld e, 0x00
+               ld a, (quazar_int)
+               ld e, a
                ld a, b
                call sid_io
                pop de
@@ -2126,7 +2131,8 @@ control3:      ld   hl,27          ; control 3 changes offset
 
                push de
                ld d, a
-               ld e, 0x00
+               ld a, (quazar_int)
+               ld e, a
                ld a, b
                call sid_io
                pop de
@@ -2140,7 +2146,8 @@ out_loop:      ld   a,(de)         ; new register value
                push bc
                push de
                ld d, a
-               ld e, 0x00
+               ld a, (quazar_int)
+               ld e, a
                ld a, b
                call sid_io
                pop de
@@ -2176,6 +2183,7 @@ bad_timer:     pop  hl              ; junk return address
                ld   a,ret_timer     ; unsupported frequency
                ret
 
+
 SECTION C64_CIA2
                defs 16              ; CIA #2 (serial, NMI)
 
@@ -2190,6 +2198,7 @@ init_addr:     defw 0
 play_addr:     defw 0
 play_song:     defb 0
 ntsc_tune:     defb 0               ; non-zero for 60Hz tunes
+quazar_int:    defb 0x20
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
