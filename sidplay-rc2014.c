@@ -140,17 +140,10 @@ int main(int argc, char **argv)
     fclose(fd);
 #endif
 
-    __asm
-    di
-    __endasm;
+    __asm__ ("di");
 
-    sidplay_copy_driver();
     sidplay_start(sid_file_base, sid_file_length);
 
-    while (1) {
-        sidplay_queue_block();
-        // flush_display_buffer();
-    }
     return 0;
 }
 

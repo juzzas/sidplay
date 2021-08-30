@@ -26,6 +26,7 @@ defc base          =  0xd000           ; Player based at 53248
 defc buffer_blocks =  25              ; number of frames to pre-buffer
 
 defc rc2014_sid_port   =  0x54             ; base port for SID interface
+defc rc2014_dbg_port   =  0x00             ; base port for LED output
 
 defc zero_page_msb =  0xe0             ; 6502 zero page base MSB
 defc stack_msb     =  0xe1             ; 6502 stack base MSB
@@ -82,6 +83,9 @@ start:         di
 
                ld   (old_stack+1),sp
                ld   sp,new_stack
+
+               ld a, 0x01
+               out (rc2014_dbg_port), a
 
 init:
                ld (sid_file_base), hl
@@ -237,8 +241,7 @@ play_loop:
                ld   de,4096/32-1    ; maximum we can buffer
                and  a
                sbc  hl,de
-               ret  nc
-               ;jr   nc,sleep_loop   ; jump back to wait if full
+               jr   nc,sleep_loop   ; jump back to wait if full
 
                xor  a
                ld   hl,(play_addr)
@@ -247,8 +250,7 @@ play_loop:
                ret  nz              ; return if so
 
                call record_block    ; record the new SID state
-               ;jp   play_loop       ; generate more data
-               ret
+               jp   play_loop       ; generate more data
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -312,7 +314,12 @@ im2_handler:   push af
                push de
                push hl
                push ix
+
+               ld a, 0x80
+               out (rc2014_dbg_port), a
+
                call play_block
+
                pop  ix
                pop  hl
                pop  de
@@ -2205,6 +2212,11 @@ quazar_int:    defb 0x20
 ; Buffer management
 
 record_block:  ld   de,(head)
+
+               ld a, 0x08
+               out (rc2014_dbg_port), a
+
+
                ld   hl,sid_regs     ; record from live SID values
                ld   bc,25           ; 25 registers to copy
                ldir
@@ -2247,6 +2259,9 @@ play_block:    ld   hl,(blocks)
                or   l
                ret  z
 
+               ld a, 0x04
+               out (rc2014_dbg_port), a
+
                ld   hl,(tail)
                call sid_update
                res  4,h             ; wrap from B000 back to A000
@@ -2266,8 +2281,18 @@ im2_lp:        ld   (hl),c
                ld   a,h
                inc  h
                ld   (hl),c          ; 257th entry
-               ld   i,a
                im   2               ; set interrupt mode 2
+               ld   i,a
+
+               ld a, (quazar_int)   ; enable interrupts
+               ld e, a
+               ld a, 0
+               ld d, 0
+               call sid_io
+
+               ld a, 0x02
+               out (rc2014_dbg_port), a
+
                ei                   ; enable player
                ret
 
