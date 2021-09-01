@@ -19,3 +19,5 @@ org 0xdddd
 SECTION DECODE
 org 0xde00
 
+SECTION SID
+org 0xe000

@@ -23,7 +23,7 @@
 
 defc base          =  0xd000           ; Player based at 53248
 
-defc buffer_blocks =  25              ; number of frames to pre-buffer
+defc buffer_blocks =  1; 25              ; number of frames to pre-buffer
 
 defc rc2014_sid_port   =  0x54             ; base port for SID interface
 defc rc2014_dbg_port   =  0x00             ; base port for LED output
@@ -53,11 +53,16 @@ defc z80_ret_op    =  0xc9             ; RET opcode
 
 defc sid_file_base_default = 0xa000
 
+EXTERN standalone_sid_file_base
+EXTERN standalone_sid_file_length
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SECTION MAIN
+                di
+
 ; jump table
 hook_driver_start:
                jp   start
@@ -80,6 +85,11 @@ pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 ;;     HL = SID file base addres
 ;;     DE = SID file length
 start:         di
+
+;;IFDEF STANDALONE
+                ld hl, standalone_sid_file_base
+                ld de, standalone_sid_file_length
+;;ENDIF
 
                ld   (old_stack+1),sp
                ld   sp,new_stack
