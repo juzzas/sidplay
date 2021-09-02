@@ -79,7 +79,6 @@ int main(int argc, char **argv)
     clear_buffer();
     flush_display_buffer();
 
-#if 0
     fd = fopen("AIRWOLF.SID","rb");
     if (!fd) {
         printf("Can't open SID file\n");
@@ -87,7 +86,7 @@ int main(int argc, char **argv)
     }
 
     fread(S_sidfile_header, sizeof(S_sidfile_header), 1, fd);
-#endif
+
     S_sidfile = (struct SidFileInfo *)sid_file_base;
 
     sid_raw = (uint8_t *)sid_file_base;
@@ -96,7 +95,6 @@ int main(int argc, char **argv)
     load_addr = swap16(S_sidfile->load_address);
 
     printf("sid file base = 0x%x\n", sid_file_base);
-    printf("sid file base = 0x%p\n", S_sidfile);
     printf("version = 0x%x\n", version);
     printf("data = 0x%04x\n", data_offset);
     printf("load address = 0x%x\n", load_addr);

@@ -87,8 +87,8 @@ pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 start:         di
 
 ;;IFDEF STANDALONE
-                ld hl, standalone_sid_file_base
-                ld de, standalone_sid_file_length
+;                ld hl, standalone_sid_file_base
+;                ld de, standalone_sid_file_length
 ;;ENDIF
 
                ld   (old_stack+1),sp
@@ -244,7 +244,7 @@ buffer_loop:   ld   hl,(blocks)     ; current block count
 buffer_done:   call check_speed     ; check for compatible playback speed
                call enable_player   ; enable interrupt-driven player
 
-sleep_loop:    halt                 ; wait for a block to play
+sleep_loop:    nop; halt                 ; wait for a block to play
 
 play_loop:
                ld   hl,(blocks)     ; check buffered blocks

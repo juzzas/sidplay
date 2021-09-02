@@ -33,5 +33,8 @@ rc2014-ticks: sidplayer-driver.bin sidplay-rc2014.c bubtb.asm $(DEPS)
 rc2014-hbios: sidplayer-driver.bin sidplay-rc2014.c  bubtb.asm $(DEPS)
 	zcc +rc2014 -subtype=hbios -v -m --list -SO2 --max-allocs-per-node100000 sidplay-rc2014.c sidplay-rc2014.asm bubtb.asm -o sidplay-rc2014 -create-app
 
+sidint: sidint.asm
+	zcc +rc2014 -subtype=hbios -v -m --list -SO2 --max-allocs-per-node100000 sidint.asm -o sidint -create-app
+
 clean:
 	rm -f *.dsk *.map *.bin *.ihx *.lis

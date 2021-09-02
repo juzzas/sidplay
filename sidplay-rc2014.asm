@@ -44,7 +44,8 @@ defc sid_driver_end = $
 
 
 sid_file_base:
-               binary "Thing_On_A_Spring.sid"
+               ;binary "Thing_On_A_Spring.sid"
+               binary "Yie_Ar_Kung_Fu.sid"
 defc sid_file_end = $
 
 _sid_file_base:
