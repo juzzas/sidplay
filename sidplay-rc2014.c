@@ -34,19 +34,15 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "bubtb.h"
 #include "sidplay-rc2014.h"
 #include "sidplay-z88dk.h"
-
-extern void sidplay_copy_driver();
-extern void sidplay_copy_sidfile();
 
 static struct SidFileInfo *S_sidfile;
 static char S_name[33];
 static char S_author[33];
 static char S_released[33];
 
-static char S_bubble_buffer[8 + 1] = "  cute  ";
+#define SID_FILE_BASE 0x8000
 
 uint16_t swap16(uint16_t val)
 {
@@ -75,32 +71,35 @@ int main(int argc, char **argv)
     FILE *fd;
     int rc;
 
-
-    clear_buffer();
-    flush_display_buffer();
-
-    fd = fopen("AIRWOLF.SID","rb");
+    fd = fopen("THINGOAS.SID","rb");
     if (!fd) {
         printf("Can't open SID file\n");
         exit(1);
     }
 
-    fread(S_sidfile_header, sizeof(S_sidfile_header), 1, fd);
+    fseek(fd, 0, SEEK_END);
+    uint16_t fsize = (uint16_t)ftell(fd);
+    printf("Length of file: %u\n", fsize);
+    fseek(fd, 0, SEEK_SET);  /* same as rewind(f); */
 
-    S_sidfile = (struct SidFileInfo *)sid_file_base;
+    rc = fread((void *)SID_FILE_BASE, 1, fsize, fd);
+    printf("file read rc: %d\n", rc);
+    fclose(fd);
 
-    sid_raw = (uint8_t *)sid_file_base;
+    S_sidfile = (struct SidFileInfo *)SID_FILE_BASE;
+
     version = swap16(S_sidfile->version);
     data_offset = swap16(S_sidfile->data_offset);
     load_addr = swap16(S_sidfile->load_address);
 
-    printf("sid file base = 0x%x\n", sid_file_base);
+    printf("sid file base = 0x%x\n", SID_FILE_BASE);
     printf("version = 0x%x\n", version);
     printf("data = 0x%04x\n", data_offset);
     printf("load address = 0x%x\n", load_addr);
 
     if (S_sidfile->load_address == 0)
     {
+        sid_raw = (uint8_t *)SID_FILE_BASE;
         load_addr = wpeek(&sid_raw[data_offset]);
         data_offset += 2;
 
@@ -117,30 +116,8 @@ int main(int argc, char **argv)
     printf("Name: %s\n", S_name);
     printf("Author: %s\n", S_author);
     printf("Released: %s\n", S_released);
-#if 0
-    for (i = 0; i < 8; i++)
-        put_char_at_index(S_bubble_buffer[i], i);
 
-    rc = fseek(fd, 0, SEEK_SET);
-    if (rc != 0)
-    {
-        printf("Unable to seek to start of file");
-        exit(1);
-    }
-
-    fseek(fd, 0, SEEK_END);
-    long fsize = ftell(fd);
-    printf("Length of file: 0x%lx\n", fsize);
-    fseek(fd, 0, SEEK_SET);  /* same as rewind(f); */
-
-    rc = fread((void *)0xa000, 1, fsize, fd);
-    printf("file read rc: %d\n", rc);
-    fclose(fd);
-#endif
-
-    __asm__ ("di");
-
-    sidplay_start(sid_file_base, sid_file_length);
+    sidplay_start((void *)SID_FILE_BASE, fsize);
 
     return 0;
 }

@@ -61,7 +61,6 @@ EXTERN standalone_sid_file_length
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SECTION MAIN
-                di
 
 ; jump table
 hook_driver_start:
