@@ -7,7 +7,7 @@ defc jt_driver_play_block = 0xd006
 PUBLIC sidplay_loader
 
 
-SECTION code_user
+SECTION LOADER
 
 sidplay_loader:
                 ld hl, sid_driver_base

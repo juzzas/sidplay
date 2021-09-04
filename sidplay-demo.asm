@@ -20,7 +20,7 @@ SECTION code_user
 
 
 PUBLIC _main
-SECTION code_user
+
 
 EXTERN standalone_sid_file_base
 EXTERN standalone_sid_file_length

@@ -30,8 +30,8 @@ rc2014-cpm: sidplayer-driver.bin sidplay-rc2014.c $(DEPS)
 rc2014-ticks: sidplayer-driver.bin sidplay-rc2014.c bubtb.asm $(DEPS)
 	zcc +test -compiler=sdcc -v -m --list -SO2  --max-allocs-per-node100000 sidplay-rc2014.c sidplay-rc2014.asm bubtb.asm -o sidplay-rc2014 -create-app
 
-rc2014-oled: sidplayer-driver.bin sidplay-demo.asm sidplay-driver-ldr.asm sidplay-standalone-sid.asm $(DEPS)
-	zcc +rc2014 -subtype=hbios -v -m --list -SO2 --max-allocs-per-node100000 sidplay-demo.asm @oled/liboled.lst sidplay-driver-ldr.asm sidplay-standalone-sid.asm -o sidplay-oled -create-app
+rc2014-oled: sidplayer-driver.bin sidplay-demo-map.asm sidplay-demo.asm sidplay-driver-ldr.asm sidplay-standalone-sid.asm $(DEPS)
+	zcc +embedded -v -m --list -subtype=none --no-crt -SO2 --max-allocs-per-node100000 sidplay-demo-map.asm sidplay-demo.asm @oled/liboled.lst sidplay-driver-ldr.asm sidplay-standalone-sid.asm -o sidplay-oled -create-app -Cz"+glue --clean --pad --ihex"
 
 sidint: sidint.asm
 	zcc +rc2014 -subtype=hbios -v -m --list -SO2 --max-allocs-per-node100000 sidint.asm -o sidint -create-app

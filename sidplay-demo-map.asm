@@ -1,0 +1,11 @@
+SECTION MAIN
+org 0x100
+
+SECTION code_user
+
+SECTION rodata_user
+SECTION data_user
+
+SECTION LOADER
+
+SECTION SID
