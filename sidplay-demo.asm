@@ -101,25 +101,9 @@ _main:
         ld hl, standalone_sid_file_base+0x56   ; released field
         call output_sidstring
 
-        LD DE, oled_buffer+OLED_WIDTH+OLED_WIDTH+OLED_WIDTH+64
-        LD IX, oled_numerals
-        ld b, 8   ; font width
 
-        LD A, 1
-        LD C, 0x80  ; line offset + print wide
-        call asm_oled_glyph8_putc
-        LD C, 0  ; line offset
-        LD A, 13
-        call asm_oled_glyph8_putc
-        LD A, 2
-        LD C, 0x80  ; line offset + print wide
-        call asm_oled_glyph8_putc
-        LD A, 3
-        LD C, 0x80  ; line offset + print wide
-        call asm_oled_glyph8_putc
-        LD A, 12
-        LD C, 0  ; line offset
-        call asm_oled_glyph8_putc
+        call output_timer
+
 
         ld hl, oled_buffer
         call asm_oled_blit
@@ -158,6 +142,42 @@ output_sidstring_l1:
         djnz output_sidstring_l1
         ret
 
+output_timer:
+        LD DE, oled_buffer+OLED_WIDTH+OLED_WIDTH+OLED_WIDTH+64
+        LD IX, oled_numerals
+
+        LD A, (minutes)
+        AND 0x0f
+        call putc_nibble
+
+        LD C, 0  ; line offset
+        LD A, 13
+        call asm_oled_glyph8_putc
+
+
+        LD A, (seconds)   ; high nibble
+        SRL A
+        SRL A
+        SRL A
+        SRL A
+        call putc_nibble
+
+        LD A, (seconds)    ; low nibble
+        AND 0x0f
+        call putc_nibble
+
+        LD A, 12
+        LD C, 0  ; line offset
+        call asm_oled_glyph8_putc
+
+        RET
+
+; entry a:= 0-9
+putc_nibble:
+        ld B, 8   ; font width
+        LD C, 0x80  ; line offset + print wide
+        call asm_oled_glyph8_putc
+        RET
 
 loop:
 	ld a, (ledval)
@@ -213,10 +233,10 @@ oled_buffer:
         DEFS 512
 
 minutes:
-        DEFB 0
+        DEFB 1
 
 seconds:
-        DEFB 0
+        DEFB 0x23
 
 ledval:
 	defb 0x01

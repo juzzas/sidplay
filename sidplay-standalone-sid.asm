@@ -9,6 +9,7 @@ standalone_sid_file_base:
      ;          binary "R-Type.sid"
                binary "Yie_Ar_Kung_Fu.sid"
      ;          binary "Thundercats.sid"
+     ;          binary "Dreams.sid"   ; RSID - not support
 defc standalone_sid_file_end = $
 defc standalone_sid_file_length =standalone_sid_file_end - standalone_sid_file_base
 
