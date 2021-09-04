@@ -1,5 +1,6 @@
 _oled_config.asm
 _oled_out_glyph8.asm
+_oled_out_glyph8_wide.asm
 _oled_out_glyph8_span.asm
 asm_oled_blit.asm
 asm_oled_blit_init.asm

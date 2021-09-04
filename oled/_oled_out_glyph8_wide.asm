@@ -14,24 +14,43 @@
 ; OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
+;; Output a glyph 8bits high (1 row) on a row boundary, each column printed twice.
 SECTION code_user
 
-PUBLIC asm_oled_glyph8_output
-EXTERN oled_out_glyph8
-EXTERN oled_out_glyph8_wide
+PUBLIC oled_out_glyph8_wide
+EXTERN oled_out_glyph8_wide_span
 
-asm_oled_glyph8_output:
-        PUSH BC
-        LD A, C
-        BIT 7, A
-        JR NZ, wide
-        call oled_out_glyph8
-        POP BC
-        RET
 
-wide:
-        AND 0x7F
-        LD C, A
-        call oled_out_glyph8_wide
-        POP BC
+INCLUDE "_oled_config.asm"
+
+;; entry:
+;;        DE = destination address
+;;        IX = source address
+;;        B = glyph width
+;;        C = row_offset
+;;
+;; exit:
+;;        DE = incremented destination address
+;;
+;; Note:
+;;        IY reserved for mask source address
+
+oled_out_glyph8_wide:
+        ;LD A, C   TODO: support WIDE spanning
+        ;OR A
+        ;JP NZ, oled_out_glyph8_wide_span
+
+        ; we're on a row boundary, we don't need expensive calculations!
+        PUSH IX ; copy source ptr to HL
+        POP HL
+
+out_loop:
+        LD A, (HL)
+        LD (DE), A
+        INC DE
+        LD (DE), A
+        INC DE
+        INC HL
+        DJNZ out_loop
+
         RET
