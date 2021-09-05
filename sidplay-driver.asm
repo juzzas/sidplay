@@ -23,7 +23,7 @@
 
 defc base          =  0xd000           ; Player based at 53248
 
-defc buffer_blocks =  1; 25              ; number of frames to pre-buffer
+defc buffer_blocks =  25                ; number of frames to pre-buffer
 
 defc rc2014_sid_port   =  0x54             ; base port for SID interface
 defc rc2014_dbg_port   =  0x00             ; base port for LED output
@@ -53,9 +53,6 @@ defc z80_ret_op    =  0xc9             ; RET opcode
 
 defc sid_file_base_default = 0xa000
 
-EXTERN standalone_sid_file_base
-EXTERN standalone_sid_file_length
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -66,17 +63,13 @@ SECTION MAIN
 hook_driver_start:
                jp   start
 
-hook_driver_queue_block:
-               jp   play_loop  ;record_block
-
-hook_driver_play_block:
-               jp   play_block
-
 sid_file_base: defw sid_file_base_default
 sid_file_len:  defw 0
 song:          defb 0               ; 0=default song from SID header
 key_mask:      defb %00000000       ; exit keys to ignore
 pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
+loop_callback: defw default_loop_callback
+frame_callback: defw default_frame_callback
 
 
 ;; SIOD DRIVER START
@@ -85,16 +78,13 @@ pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 ;;     DE = SID file length
 start:         di
 
-;;IFDEF STANDALONE
-;                ld hl, standalone_sid_file_base
-;                ld de, standalone_sid_file_length
-;;ENDIF
-
                ld   (old_stack+1),sp
                ld   sp,new_stack
 
+IFDEF DEBUG
                ld a, 0x01
                out (rc2014_dbg_port), a
+ENDIF
 
 init:
                ld (sid_file_base), hl
@@ -243,7 +233,8 @@ buffer_loop:   ld   hl,(blocks)     ; current block count
 buffer_done:   call check_speed     ; check for compatible playback speed
                call enable_player   ; enable interrupt-driven player
 
-sleep_loop:    nop; halt                 ; wait for a block to play
+sleep_loop:                         ; call any user rooutines if, needed
+               call do_loop_callback
 
 play_loop:
                ld   hl,(blocks)     ; check buffered blocks
@@ -324,10 +315,13 @@ im2_handler:   push af
                push hl
                push ix
 
+IFDEF DEBUG
                ld a, 0x80
                out (rc2014_dbg_port), a
+ENDIF
 
                call play_block
+               call do_frame_callback
 
                pop  ix
                pop  hl
@@ -337,6 +331,35 @@ int_exit:      pop  af
                ei
                reti
 
+do_loop_callback:
+               ld hl, (loop_callback)
+               jp (hl)
+
+do_frame_callback:
+               ld hl, (frame_callback)
+               jp (hl)
+
+
+default_loop_callback:
+               ld a, (debugval)
+               ld l, a
+               ld a, (old_debugval)
+               cp l
+               ret z
+
+               ld a, l
+               ld (old_debugval), a
+               out (rc2014_dbg_port), a
+               ret
+
+default_frame_callback:
+               ld a, (debugval)
+               inc a
+               ld (debugval), a
+               ret
+
+old_debugval:      defb 0
+debugval:      defb 0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Instruction implementations
@@ -2222,9 +2245,10 @@ quazar_int:    defb 0x20
 
 record_block:  ld   de,(head)
 
+IFDEF DEBUG
                ld a, 0x08
                out (rc2014_dbg_port), a
-
+ENDIF
 
                ld   hl,sid_regs     ; record from live SID values
                ld   bc,25           ; 25 registers to copy
@@ -2268,8 +2292,10 @@ play_block:    ld   hl,(blocks)
                or   l
                ret  z
 
+IFDEF DEBUG
                ld a, 0x04
                out (rc2014_dbg_port), a
+ENDIF
 
                ld   hl,(tail)
                call sid_update
@@ -2299,8 +2325,10 @@ im2_lp:        ld   (hl),c
                ld d, 0
                call sid_io
 
+IFDEF DEBUG
                ld a, 0x02
                out (rc2014_dbg_port), a
+ENDIF
 
                ei                   ; enable player
                ret
