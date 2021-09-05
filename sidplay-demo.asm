@@ -21,6 +21,8 @@ SECTION code_user
 
 PUBLIC _main
 
+EXTERN addr_loop_callback
+EXTERN addr_frame_callback
 
 EXTERN standalone_sid_file_base
 EXTERN standalone_sid_file_length
@@ -110,6 +112,12 @@ _main:
 
         call sidplay_loader
 
+        ld hl, demo_frame_callback
+        ld (addr_frame_callback), hl
+
+        ld hl, demo_loop_callback
+        ld (addr_loop_callback), hl
+
         ld hl, standalone_sid_file_base
         ld de, standalone_sid_file_length
         call sidplay_start
@@ -179,12 +187,54 @@ putc_nibble:
         call asm_oled_glyph8_putc
         RET
 
-loop:
-	ld a, (ledval)
-	out (0x00), a
-	inc a
-	ld (ledval), a
-	ret
+demo_frame_callback:
+        ld a, (ledval)
+        out (0x00), a
+        inc a
+        ld (ledval), a
+
+        ld a, (frames)
+        inc a
+        cp 50    ; todo: 60/100 Hz tunes...
+        jr z,inc_seconds
+        ld (frames), a
+        ret
+
+inc_seconds:
+        ld a, 0
+        ld (frames), a
+        ld a, (seconds)
+        inc a
+        daa
+        cp 0x60
+        jr z, inc_minutes
+        ld (seconds), a
+        ret
+
+inc_minutes:
+        ld a, 0
+        ld (seconds), a
+        ld a, (minutes)
+        inc a
+        daa
+        ld (minutes), a
+        ret
+
+
+demo_loop_callback:
+        ld a, (seconds)
+        ld l, a
+        ld a, (old_seconds)
+        cp l
+        ret z
+
+        ld a, l
+        ld (old_seconds), a
+
+        call output_timer
+        ld hl, oled_buffer
+        call asm_oled_blit
+        ret
 
 
 ; entry: A= data to set buffer
@@ -229,14 +279,13 @@ oled_numerals:
 
 SECTION data_user
 
-oled_buffer:
-        DEFS 512
+oled_buffer: DEFS 512
 
-minutes:
-        DEFB 1
+minutes: DEFB 0
+seconds: DEFB 0
 
-seconds:
-        DEFB 0x23
+old_seconds: DEFB 0
+frames: DEFB 0
 
 ledval:
 	defb 0x01

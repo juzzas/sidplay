@@ -63,13 +63,15 @@ SECTION MAIN
 hook_driver_start:
                jp   start
 
-sid_file_base: defw sid_file_base_default
-sid_file_len:  defw 0
 song:          defb 0               ; 0=default song from SID header
-key_mask:      defb %00000000       ; exit keys to ignore
-pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
+
 loop_callback: defw default_loop_callback
 frame_callback: defw default_frame_callback
+
+sid_file_base: defw sid_file_base_default
+sid_file_len:  defw 0
+key_mask:      defb %00000000       ; exit keys to ignore
+pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 
 
 ;; SIOD DRIVER START
