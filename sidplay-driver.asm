@@ -53,6 +53,10 @@ defc z80_ret_op    =  0xc9             ; RET opcode
 
 defc sid_file_base_default = 0xa000
 
+defc QUAZAR_INT_50HZ = 0x20
+defc QUAZAR_INT_60HZ = 0x40
+defc QUAZAR_INT_100HZ = 0x60
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -232,7 +236,7 @@ buffer_loop:   ld   hl,(blocks)     ; current block count
                call record_block    ; record the state
                jr   buffer_loop     ; loop buffering more
 
-buffer_done:   call check_speed     ; check for compatible playback speed
+buffer_done:   call set_speed     ; check for compatible playback speed
                call enable_player   ; enable interrupt-driven player
 
 sleep_loop:                         ; call any user rooutines if, needed
@@ -2057,22 +2061,6 @@ SECTION C64_CIA1
 
 ; SID interface functions
 
-sid_clear:      ld c, rc2014_sid_port
-                ld b, 0x98
-                xor a
-                out (c), a
-                nop
-                nop
-                nop
-                res 7,b
-                out (c), a
-                nop
-                nop
-                nop
-                set 7,b
-                out (c), a
-                ret
-
 ; entry:
 ;        A = SID register (0x00 - 0x18)
 ;        D = DATA BYTE
@@ -2206,19 +2194,41 @@ sid_skip:      inc  hl
 
 
 ; Set playback speed, using timer first then ntsc flag
-check_speed:   ld   hl,(c64_cia_timer) ; C64 CIA#1 timer frequency
+set_speed:     ld   hl,(c64_cia_timer) ; C64 CIA#1 timer frequency
                ld   a,h
                or   l
-               ret  z               ; accept 50Hz and 60Hz
+               jr   nz,use_timer    ; use if non-zero
+               ld   a,(ntsc_tune)   ; SID header said NTSC tune?
+               and  a
+               jr   nz,set_60hz     ; use 60Hz for NTSC
+
+set_50hz:
+               ld a, QUAZAR_INT_50HZ
+               ld (quazar_int), a
+               ret
+
+set_60hz:
+               ld a, QUAZAR_INT_60HZ
+               ld (quazar_int), a
+               ret
+
+set_100hz:
+               ld a, QUAZAR_INT_60HZ
+               ld (quazar_int), a
+               ret
 
 ; 985248.4Hz / HL = playback frequency in Hz
 use_timer:     ld   a,h
+               cp   0x22             ; 110Hz (PAL)
+               jr   c,bad_timer     ; reject >100Hz
+               cp   0x2b             ; 90Hz
+               jr   c,set_100hz     ; use 100Hz for 90-110Hz
                cp   0x3b             ; 65Hz
                jr   c,bad_timer     ; reject 65<freq<90hz
                cp   0x45             ; 55Hz
-               ret  c               ; use 50Hz for 55-65Hz (compromise!)
+               jr   c,set_60hz      ; use 60Hz for 55-65Hz
                cp   0x56             ; 45Hz
-               ret  c               ; use 50Hz for 45-55Hz
+               jr   c,set_50hz      ; use 50Hz for 45-55Hz
                                     ; reject <45Hz
 bad_timer:     pop  hl              ; junk return address
                ld   a,ret_timer     ; unsupported frequency
