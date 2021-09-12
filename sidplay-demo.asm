@@ -18,11 +18,15 @@
 
 SECTION MAIN
 
+; jump table
+defc drv_driver_init = 0xd000
+
+defc drv_default_song = 0xd003     ; 0=default song from SID header
+defc drv_addr_loop_callback = 0xd004
+defc drv_addr_frame_callback = 0xd006
+defc drv_frequency = 0xd008
 
 PUBLIC _main
-
-EXTERN addr_loop_callback
-EXTERN addr_frame_callback
 
 EXTERN standalone_sid_file_base
 EXTERN standalone_sid_file_length
@@ -37,9 +41,12 @@ EXTERN asm_oled_glyph8_puts
 EXTERN oled_glyph8_std_font4
 EXTERN test_buffer
 
+defc QUAZAR_FREQ_NONE = 0
+defc QUAZAR_FREQ_50HZ = 0x20
+defc QUAZAR_FREQ_60HZ = 0x40
+defc QUAZAR_FREQ_100HZ = 0x60
 
 
-DEFC sidplay_start = 0xd000
 DEFC BUFFER_SIZE= 512
 DEFC OLED_WIDTH = 128
 
@@ -113,14 +120,14 @@ _main:
         call sidplay_loader
 
         ld hl, demo_frame_callback
-        ld (addr_frame_callback), hl
+        ld (drv_addr_frame_callback), hl
 
         ld hl, demo_loop_callback
-        ld (addr_loop_callback), hl
+        ld (drv_addr_loop_callback), hl
 
         ld hl, standalone_sid_file_base
         ld de, standalone_sid_file_length
-        call sidplay_start
+        call drv_driver_init
 
         ; display return value
         ld a, c
@@ -193,9 +200,27 @@ demo_frame_callback:
         inc a
         ld (ledval), a
 
+        ld a, (drv_frequency)
+
+        cp QUAZAR_FREQ_100HZ
+        jr nz, check_60hz
+        ld a, 100
+        jr got_freq
+
+check_60hz:
+        cp QUAZAR_FREQ_60HZ
+        jr nz, assume_50hz
+        ld a, 60
+        jr got_freq
+
+assume_50hz:
+        ld a, 50
+
+got_freq:
+        ld b, a
         ld a, (frames)
         inc a
-        cp 50    ; todo: 60/100 Hz tunes...
+        cp b
         jr z,inc_seconds
         ld (frames), a
         ret

@@ -53,9 +53,10 @@ defc z80_ret_op    =  0xc9             ; RET opcode
 
 defc sid_file_base_default = 0xa000
 
-defc QUAZAR_INT_50HZ = 0x20
-defc QUAZAR_INT_60HZ = 0x40
-defc QUAZAR_INT_100HZ = 0x60
+defc QUAZAR_FREQ_NONE = 0
+defc QUAZAR_FREQ_50HZ = 0x20
+defc QUAZAR_FREQ_60HZ = 0x40
+defc QUAZAR_FREQ_100HZ = 0x60
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -71,10 +72,12 @@ song:          defb 0               ; 0=default song from SID header
 
 loop_callback: defw default_loop_callback
 frame_callback: defw default_frame_callback
+quazar_int:    defb QUAZAR_FREQ_NONE
 
 sid_file_base: defw sid_file_base_default
 sid_file_len:  defw 0
-key_mask:      defb %00000000       ; exit keys to ignore
+
+
 pre_buffer:    defw buffer_blocks   ; pre-buffer 1 second
 
 
@@ -2203,17 +2206,17 @@ set_speed:     ld   hl,(c64_cia_timer) ; C64 CIA#1 timer frequency
                jr   nz,set_60hz     ; use 60Hz for NTSC
 
 set_50hz:
-               ld a, QUAZAR_INT_50HZ
+               ld a, QUAZAR_FREQ_50HZ
                ld (quazar_int), a
                ret
 
 set_60hz:
-               ld a, QUAZAR_INT_60HZ
+               ld a, QUAZAR_FREQ_60HZ
                ld (quazar_int), a
                ret
 
 set_100hz:
-               ld a, QUAZAR_INT_60HZ
+               ld a, QUAZAR_FREQ_100HZ
                ld (quazar_int), a
                ret
 
@@ -2249,7 +2252,7 @@ init_addr:     defw 0
 play_addr:     defw 0
 play_song:     defb 0
 ntsc_tune:     defb 0               ; non-zero for 60Hz tunes
-quazar_int:    defb 0x20
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
